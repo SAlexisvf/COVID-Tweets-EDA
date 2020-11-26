@@ -1,7 +1,18 @@
+"""
+This script collects covid related tweets from tweets ID's on a txt file, 
+transform them into a Pandas dataframe and save it as a csv file.
+
+The dataset is retrieved from https://www.kaggle.com/lopezbec/covid19-tweets-dataset?select=covid+Tweets_ID
+The txt file has the following format:
+[id_1, id_2, id_3, ..., id_n]
+
+E.g. 
+>>> python tweet_collector.py -d 2020_03_17 -c 100
+"""
+
 import os
 import tweepy as tw
 import pandas as pd
-import datetime
 import random
 import ast
 import argparse
@@ -10,7 +21,7 @@ from credentials import *
 def tweet_collector(date, max_tweets):
     auth = tw.OAuthHandler(consumer_api_key, consumer_api_secret)
     auth.set_access_token(access_token, access_token_secret)
-    api = tw.API(auth)
+    api = tw.API(auth, wait_on_rate_limit=True)
 
     with open('covid_tweets_id/covid_' + date + '.txt') as f:
         lines = f.readlines()
@@ -18,11 +29,11 @@ def tweet_collector(date, max_tweets):
 
     tweets_df = pd.DataFrame()
     miss_count, retrieved_count = (0,0)
-    while retrieved_count < max_tweets:
+    while retrieved_count < max_tweets and len(data[0]) != 0:
         # pick a tweet ID randomly
         random_id = random.choice(data[0])
         try:
-            tweet = api.get_status(random_id)    
+            tweet = api.get_status(random_id, tweet_mode='extended')    
         except:
             miss_count = miss_count + 1
             print('missed tweets: ' + str(miss_count))
@@ -38,7 +49,8 @@ def tweet_collector(date, max_tweets):
                                                     'favorite_count': tweet.favorite_count,
                                                     'user_verified': tweet.user.verified,
                                                     'date': tweet.created_at,
-                                                    'text': tweet.text, 
+                                                    'lang': tweet.lang,
+                                                    'text': tweet.full_text, 
                                                     'hashtags': [hashtags if hashtags else None],
                                                     'source': tweet.source,}, index=[0]))
 
